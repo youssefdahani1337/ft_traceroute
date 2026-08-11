@@ -5,7 +5,7 @@ NAME        = ft_traceroute
 DIR_UTILS   = src/
 DIR_OBJ     = obj/
 
-UTILSFILES  = main.c
+UTILSFILES  = main.c resolve_host.c parse_arguments.c utils.c sender.c output.c
 
 # Prefixes src/ to every file: src/main.c src/parser.c
 SRCS        = $(addprefix $(DIR_UTILS), $(UTILSFILES))

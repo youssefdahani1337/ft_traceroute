@@ -3,8 +3,18 @@
 
 int main(int argc, char **argv)
 {
-    (void)argc;
-    (void)argv;
-    printf("Hello World!\n");
+    t_traceroute *traceroute = calloc(1, sizeof(*traceroute));
+
+    if (!traceroute)
+    {
+        perror("calloc");
+        return (1);
+    }
+    parse_arguments(argc, argv, traceroute);
+    resolve_host(traceroute);
+    open_socket(traceroute);
+    sender(traceroute);
+    
+    free_all(traceroute);
     return (0);
 }
