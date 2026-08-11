@@ -14,7 +14,7 @@ int main(int argc, char **argv)
     resolve_host(traceroute);
     open_socket(traceroute);
     sender(traceroute);
-    
+
     free_all(traceroute);
     return (0);
 }

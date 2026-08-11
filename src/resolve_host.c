@@ -1,5 +1,4 @@
 #include "../include/ft_traceroute.h"
-#include <net/if.h>
 
 static void configure_socket_timeout(int sockfd, long seconds, long microseconds)
 {
@@ -52,33 +51,8 @@ void resolve_host(t_traceroute *traceroute)
 
 static void configure_socket_options(int sockfd, t_traceroute *traceroute)
 {
-	int tos;
-	unsigned int ifindex;
-
+	(void)traceroute;
 	configure_socket_timeout(sockfd, 2, 0);
-	if (traceroute->interface_name != NULL && *traceroute->interface_name != '\0')
-	{
-		ifindex = if_nametoindex(traceroute->interface_name);
-		if (ifindex == 0)
-		{
-			fprintf(stderr, "ft_traceroute: invalid interface %s\n", traceroute->interface_name);
-			exit(1);
-		}
-		if (setsockopt(sockfd, IPPROTO_IP, IP_BOUND_IF, &ifindex, sizeof(ifindex)) < 0)
-		{
-			perror("setsockopt(IP_BOUND_IF)");
-			exit(1);
-		}
-	}
-	if (traceroute->tos >= 0)
-	{
-		tos = traceroute->tos;
-		if (setsockopt(sockfd, IPPROTO_IP, IP_TOS, &tos, sizeof(tos)) < 0)
-		{
-			perror("setsockopt(IP_TOS)");
-			exit(1);
-		}
-	}
 }
 
 void open_socket(t_traceroute *traceroute)

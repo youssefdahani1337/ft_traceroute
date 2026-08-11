@@ -1,5 +1,7 @@
 #include "../include/ft_traceroute.h"
 
+#define RESPONSE_TIMEOUT_MS 2000
+
 static void reset_probe_state(t_probe *probe, int ttl)
 {
     probe->ttl = ttl;
@@ -9,38 +11,93 @@ static void reset_probe_state(t_probe *probe, int ttl)
     memset(probe->received_from, 0, INET_ADDRSTRLEN);
 }
 
-static void send_all_probes(t_traceroute *traceroute, int ttl)
+static void print_probe_result(const t_probe *probe, char *last_ip, int *printed_any_valid)
 {
-    for (int probe_index = 0; probe_index < traceroute->max_probes; probe_index++)
+    double rtt_ms;
+
+    if (!probe->received || probe->received_from[0] == '\0')
     {
-        reset_probe_state(traceroute->probes[probe_index], ttl);
-        send_probe(traceroute, probe_index);
+        write(1, "  *", 3);
+        last_ip[0] = '\0';
+        return;
     }
+
+    rtt_ms = get_probe_rtt_ms(probe);
+    if (!*printed_any_valid)
+    {
+        printf("  %s (%s)  %.3f ms", probe->received_from, probe->received_from, rtt_ms);
+        *printed_any_valid = 1;
+    }
+    else if (strcmp(probe->received_from, last_ip) == 0)
+    {
+        printf("  %.3f ms", rtt_ms);
+    }
+    else
+    {
+        printf("   %s (%s)  %.3f ms", probe->received_from, probe->received_from, rtt_ms);
+    }
+
+    snprintf(last_ip, INET_ADDRSTRLEN, "%s", probe->received_from);
 }
 
-static void collect_responses(t_traceroute *traceroute)
+static void send_probe_and_collect(
+    t_traceroute *traceroute,
+    int ttl,
+    int probe_index,
+    char *last_ip,
+    int *printed_any_valid
+)
 {
-    for (int probe_index = 0; probe_index < traceroute->max_probes; probe_index++)
+    traceroute->probes[probe_index]->port =
+        traceroute->destination_port +
+        ((ttl - traceroute->first_hop) * traceroute->max_probes) + probe_index;
+    reset_probe_state(traceroute->probes[probe_index], ttl);
+    send_probe(traceroute, probe_index);
+
+    while (traceroute->probes[probe_index]->received == 0)
     {
-        if (receive_response(traceroute) > 0 && traceroute->reached_destination)
+        if (receive_response(traceroute) <= 0)
+            break;
+        if (traceroute->reached_destination)
             break;
     }
+
+    print_probe_result(traceroute->probes[probe_index], last_ip, printed_any_valid);
 }
 
 void sender(t_traceroute *traceroute)
 {
-    for (int ttl = 1; ttl <= traceroute->max_hops; ttl++)
+    char last_ip[INET_ADDRSTRLEN] = {0};
+    int printed_any_valid;
+
+    for (int ttl = traceroute->first_hop; ttl <= traceroute->max_hops; ttl++)
     {
         traceroute->reached_destination = 0;
+        printed_any_valid = 0;
+        last_ip[0] = '\0';
+
+        char ttl_str[4];
+        snprintf(ttl_str, sizeof(ttl_str), " %2d", ttl);
+        write(1, ttl_str, strlen(ttl_str));
         if (setsockopt(traceroute->sockfd, IPPROTO_IP, IP_TTL, &ttl, sizeof(ttl)) < 0)
         {
             perror("setsockopt");
             exit(1);
         }
 
-        send_all_probes(traceroute, ttl);
-        collect_responses(traceroute);
-        print_hop_results(traceroute, ttl);
+        for (int probe_index = 0; probe_index < traceroute->max_probes; probe_index++)
+        {
+            send_probe_and_collect(
+                traceroute,
+                ttl,
+                probe_index,
+                last_ip,
+                &printed_any_valid
+            );
+            if (traceroute->reached_destination)
+                break;
+        }
+        printf("\n");
 
         if (traceroute->reached_destination)
             break;
@@ -78,7 +135,7 @@ int receive_response(t_traceroute *traceroute)
 {
     char buffer[512];
     struct sockaddr_in sender_addr;
-    struct pollfd pfd;
+    // struct pollfd pfd;
     socklen_t addr_len;
     ssize_t bytes_received;
     struct timespec current_time;
@@ -90,11 +147,11 @@ int receive_response(t_traceroute *traceroute)
 
     addr_len = sizeof(sender_addr);
 
-    pfd.fd = traceroute->sockfd_icmp;
-    pfd.events = POLLIN;
-    pfd.revents = 0;
-    if (poll(&pfd, 1, 1000) <= 0)
-        return (0);
+    // pfd.fd = traceroute->sockfd_icmp;
+    // pfd.events = POLLIN;
+    // pfd.revents = 0;
+    // if (poll(&pfd, 1, RESPONSE_TIMEOUT_MS) <= 0)
+    //     return (0);
 
     bytes_received = recvfrom(
         traceroute->sockfd_icmp,
@@ -123,18 +180,15 @@ int receive_response(t_traceroute *traceroute)
         return (0);
     }
 
-    probe_index = find_probe(
-        traceroute,
-        original_port
-    );
-
+    probe_index = find_probe(traceroute, original_port);
     if (probe_index < 0)
         return (0);
 
-    clock_gettime(
-        CLOCK_MONOTONIC,
-        &current_time
-    );
+    if (traceroute->probes[probe_index]->ttl != 0 &&
+        traceroute->probes[probe_index]->received)
+        return (0);
+
+    clock_gettime(CLOCK_MONOTONIC, &current_time);
 
     inet_ntop(
         AF_INET,

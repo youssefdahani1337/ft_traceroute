@@ -18,6 +18,7 @@
 #include <poll.h>
 #include <netinet/ip.h>
 #include <netinet/udp.h>
+
 // MACROS 
 
 #define DEFAULT_PORT 33434
@@ -40,11 +41,10 @@ typedef struct s_traceroute
     struct sockaddr_in *target;
     char target_ip[INET_ADDRSTRLEN];
     char *target_hostname;
-    char *interface_name;
+    int first_hop;
     int max_hops;
     int max_probes;
     int destination_port;
-    int tos;
     int sockfd;
     int sockfd_icmp;
     int reached_destination;

@@ -1,14 +1,5 @@
 #include "../include/ft_traceroute.h"
 
-#define ICMP_HEADER_SIZE 8
-
-typedef struct s_icmp_header
-{
-    uint8_t type;
-    uint8_t code;
-    uint16_t checksum;
-} t_icmp_header;
-
 int parse_icmp(
     char *buffer,
     ssize_t len,
@@ -18,43 +9,46 @@ int parse_icmp(
 )
 {
     struct ip *outer_ip;
-    t_icmp_header *icmp;
+    struct icmphdr *icmp;
     struct ip *original_ip;
     struct udphdr *original_udp;
 
     int outer_ip_len;
     int original_ip_len;
 
-    if (len < (ssize_t)(sizeof(struct ip)))
+    if (len < (ssize_t)sizeof(struct ip))
         return (-1);
 
     outer_ip = (struct ip *)buffer;
-    if (outer_ip->ip_hl < 5)
+    if (outer_ip->ip_v != 4)
         return (-1);
-    outer_ip_len = outer_ip->ip_hl << 2;
-
-    if (len < outer_ip_len + ICMP_HEADER_SIZE)
+    outer_ip_len = (outer_ip->ip_hl & 0x0F) << 2;
+    if (outer_ip_len < (int)sizeof(struct ip) || outer_ip_len > len)
         return (-1);
 
-    icmp = (t_icmp_header *)(buffer + outer_ip_len);
+    if (len < outer_ip_len + (int)sizeof(struct icmphdr))
+        return (-1);
+
+    icmp = (struct icmphdr *)(buffer + outer_ip_len);
     *icmp_type = icmp->type;
     *icmp_code = icmp->code;
 
     if (icmp->type != ICMP_TIMXCEED && icmp->type != ICMP_UNREACH)
         return (-1);
 
-    if (len < outer_ip_len + ICMP_HEADER_SIZE + (int)sizeof(struct ip))
+    if (len < outer_ip_len + (int)sizeof(struct icmphdr) + (int)sizeof(struct ip))
         return (-1);
 
-    original_ip = (struct ip *)((char *)icmp + ICMP_HEADER_SIZE);
-    if (original_ip->ip_hl < 5)
+    original_ip = (struct ip *)((char *)icmp + sizeof(struct icmphdr));
+    if (original_ip->ip_v != 4)
         return (-1);
-    original_ip_len = original_ip->ip_hl << 2;
+    original_ip_len = (original_ip->ip_hl & 0x0F) << 2;
+    if (original_ip_len < (int)sizeof(struct ip) ||
+        original_ip_len > (len - outer_ip_len - (int)sizeof(struct icmphdr)))
+        return (-1);
 
-    if (len < outer_ip_len +
-              ICMP_HEADER_SIZE +
-              original_ip_len +
-              (int)sizeof(struct udphdr))
+    if (len < outer_ip_len + (int)sizeof(struct icmphdr) + original_ip_len +
+        (int)sizeof(struct udphdr))
         return (-1);
 
     original_udp = (struct udphdr *)((char *)original_ip + original_ip_len);
