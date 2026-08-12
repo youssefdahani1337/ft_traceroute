@@ -22,8 +22,8 @@
 // MACROS 
 
 #define DEFAULT_PORT 33434
-#define BUFFER  "HELLO"
-#define MAX_HOPS 30
+#define BUFFER  "0123456789abcdefghijklmnopqrstuv"
+#define MAX_HOPS 64
 #define MAX_PROBES 3
 
 typedef struct sprobe
@@ -45,6 +45,7 @@ typedef struct s_traceroute
     int max_hops;
     int max_probes;
     int destination_port;
+    int wait_time;
     int sockfd;
     int sockfd_icmp;
     int reached_destination;
@@ -63,6 +64,7 @@ int         find_probe(t_traceroute *traceroute, uint16_t port);
 int         parse_icmp(char *buffer, ssize_t len, uint16_t *original_port, int *icmp_type, int *icmp_code);
 void        print_hop_results(const t_traceroute *traceroute, int ttl);
 double      get_probe_rtt_ms(const t_probe *probe);
+void        print_traceroute_header(const t_traceroute *traceroute);
 void        free_all(t_traceroute *traceroute);
 
 

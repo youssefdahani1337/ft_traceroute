@@ -6,6 +6,20 @@ double get_probe_rtt_ms(const t_probe *probe)
         (double)probe->rtt.tv_usec / 1000.0;
 }
 
+void print_traceroute_header(const t_traceroute *traceroute)
+{
+    size_t packet_size;
+
+    packet_size = strlen(BUFFER) + sizeof(struct iphdr) + sizeof(struct udphdr);
+    printf(
+        "traceroute to %s (%s), %d hops max, %zu byte packets\n",
+        traceroute->target_hostname ? traceroute->target_hostname : traceroute->target_ip,
+        traceroute->target_ip[0] ? traceroute->target_ip : "unknown",
+        traceroute->max_hops,
+        packet_size
+    );
+}
+
 void print_hop_results(const t_traceroute *traceroute, int ttl)
 {
     char last_ip[INET_ADDRSTRLEN] = {0};

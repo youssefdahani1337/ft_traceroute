@@ -51,8 +51,7 @@ void resolve_host(t_traceroute *traceroute)
 
 static void configure_socket_options(int sockfd, t_traceroute *traceroute)
 {
-	(void)traceroute;
-	configure_socket_timeout(sockfd, 2, 0);
+	configure_socket_timeout(sockfd, traceroute->wait_time, 0);
 }
 
 void open_socket(t_traceroute *traceroute)

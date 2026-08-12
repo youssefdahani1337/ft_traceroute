@@ -72,6 +72,7 @@ void init_traceroute(t_traceroute *traceroute)
     traceroute->max_hops = MAX_HOPS;
     traceroute->max_probes = MAX_PROBES;
     traceroute->destination_port = DEFAULT_PORT;
+    traceroute->wait_time = 3;
     allocate_probe_array(traceroute, traceroute->max_probes);
 }
 
@@ -80,12 +81,21 @@ void print_help(FILE *stdfile)
     fprintf(stdfile, "Usage: ft_traceroute [options] <hostname>\n");
     fprintf(stdfile, "Options:\n");
     fprintf(stdfile, "  -h, --help\t\tShow this help message\n");
-    fprintf(stdfile, "  -f <hops>\t\tSet the first hop to probe\n");
-    fprintf(stdfile, "  -m <hops>, --max-hop <hops>\tSet the maximum number of hops\n");
-    fprintf(stdfile, "  -q <probes>\t\tSet the number of probes per hop\n");
-    fprintf(stdfile, "  -p <port>\t\tSet the destination UDP port\n");
+    fprintf(stdfile, "  -f, --first-hop <hops>\t\tSet the first hop to probe\n");
+    fprintf(stdfile, "  -m, --max-hop <hops>\tSet the maximum number of hops\n");
+    fprintf(stdfile, "  -q ,--tries <probes>\t\tSet the number of probes per hop\n");
+    fprintf(stdfile, "  -p, --port <port>\t\tSet the destination UDP port\n");
+    fprintf(stdfile, "  -w, --wait=NUM\t\twait NUM seconds for response (default: 3)\n");
+    fprintf(stdfile, "  -V, --version\t\tPrint program version\n");
 
     exit(stdfile == stdout ? 0 : 1);
+}
+
+static void print_version(void)
+{
+    printf("ft_traceroute version 1.3.3.7\n");
+    printf("Built with love by Youssef Dahani - 1337student\n");
+    exit(0);
 }
 
 void parse_arguments(int argc, char **argv, t_traceroute *traceroute)
@@ -96,6 +106,11 @@ void parse_arguments(int argc, char **argv, t_traceroute *traceroute)
     struct option long_opts[] = {
         {"help", no_argument, NULL, 'h'},
         {"max-hop", required_argument, NULL, 'm'},
+        {"wait", required_argument, NULL, 'w'},
+        {"first-hop", required_argument, NULL, 'f'},
+        {"version", no_argument, NULL, 'V'},\
+        {"tries", required_argument, NULL, 'q'},
+        {"port", required_argument, NULL, 'p'},
         {0, 0, 0, 0}
     };
 
@@ -103,13 +118,16 @@ void parse_arguments(int argc, char **argv, t_traceroute *traceroute)
     previous_probe_count = traceroute->max_probes;
     opterr = 0;
 
-    while ((opt = getopt_long(argc, argv, "hf:m:q:p:", long_opts, &long_index)) != -1)
+    while ((opt = getopt_long(argc, argv, "hf:m:q:p:w:V", long_opts, &long_index)) != -1)
     {
         switch (opt)
         {
             case 'h':
                 print_help(stdout);
                 break ;
+            case 'V':
+                print_version();
+                break;
             case 'f':
                 traceroute->first_hop = parse_positive_int(optarg, 1, 255, "f");
                 break;
@@ -121,6 +139,9 @@ void parse_arguments(int argc, char **argv, t_traceroute *traceroute)
                 break;
             case 'p':
                 traceroute->destination_port = parse_positive_int(optarg, 1, 65535, "p");
+                break;
+            case 'w':
+                traceroute->wait_time = parse_positive_int(optarg, 1, 255, "w");
                 break;
             default:
                 print_help(stderr);

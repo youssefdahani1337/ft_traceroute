@@ -36,8 +36,9 @@ fclean: clean
 
 re: fclean all
 
-test:
-	@$(CC)  test.c -o test
-	./test
-	rm -f test
+test: all
+	@echo "\033[032m running tests !!\033[0m"
+		sudo ./test.sh
+
+
 .PHONY: all clean fclean re

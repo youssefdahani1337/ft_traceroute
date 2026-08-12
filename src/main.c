@@ -12,6 +12,7 @@ int main(int argc, char **argv)
     }
     parse_arguments(argc, argv, traceroute);
     resolve_host(traceroute);
+    print_traceroute_header(traceroute);
     open_socket(traceroute);
     sender(traceroute);
 

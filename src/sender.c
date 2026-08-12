@@ -72,12 +72,14 @@ void sender(t_traceroute *traceroute)
 
     for (int ttl = traceroute->first_hop; ttl <= traceroute->max_hops; ttl++)
     {
+        int hop_index = ttl - traceroute->first_hop + 1;
+
         traceroute->reached_destination = 0;
         printed_any_valid = 0;
         last_ip[0] = '\0';
 
         char ttl_str[4];
-        snprintf(ttl_str, sizeof(ttl_str), " %2d", ttl);
+        snprintf(ttl_str, sizeof(ttl_str), " %2d", hop_index);
         write(1, ttl_str, strlen(ttl_str));
         if (setsockopt(traceroute->sockfd, IPPROTO_IP, IP_TTL, &ttl, sizeof(ttl)) < 0)
         {
